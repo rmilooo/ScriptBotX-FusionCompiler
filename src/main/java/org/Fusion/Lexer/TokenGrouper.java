@@ -21,7 +21,7 @@ public class TokenGrouper {
             Token currentToken = tokens.get(index);
 
             // Handle the 'bot' declaration
-            if (currentToken.getType() == TokenType.BOT) {
+            if (currentToken.type() == TokenType.BOT) {
                 List<Object> botGroup = groupBot(index);
                 if (botGroup != null) {
                     groupedTokens.add(botGroup);
@@ -32,25 +32,26 @@ public class TokenGrouper {
                 }
             }
             // Handle 'command' declaration
-            else if (currentToken.getType() == TokenType.COMMAND) {
+            else if (currentToken.type() == TokenType.COMMAND) {
                 GroupingResult result = groupCommand(index);
-                List<Object> commandGroup = result.getGroupedTokens();
+                assert result != null;
+                List<Object> commandGroup = result.groupedTokens();
                 if (commandGroup != null) {
                     groupedTokens.add(commandGroup);
-                    index += commandGroup.size();
+                    index = result.newIndex();
                 } else {
                     ErrorHandler.handleError("Invalid command declaration.");
                     break;
                 }
             }
             // Handle 'on_ready' declaration
-            else if (currentToken.getType() == TokenType.ON_READY) {
+            else if (currentToken.type() == TokenType.ON_READY) {
                 GroupingResult result = groupOnReady(index);
                 assert result != null;
-                List<Object> onReadyGroup = result.getGroupedTokens();
+                List<Object> onReadyGroup = result.groupedTokens();
                 if (onReadyGroup != null) {
                     groupedTokens.add(onReadyGroup);
-                    index = result.getNewIndex();
+                    index = result.newIndex();
                 } else {
                     ErrorHandler.handleError("Invalid 'on_ready' declaration.");
                     break;
@@ -58,10 +59,10 @@ public class TokenGrouper {
             }
 
             // Handle 'token' declaration
-            else if (currentToken.getType() == TokenType.TOKEN) {
-                if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.STRING) {
+            else if (currentToken.type() == TokenType.TOKEN) {
+                if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.STRING) {
                     // Add the 'token' declaration and its associated value
-                    groupedTokens.add(List.of(new Token(TokenType.TOKEN, tokens.get(index + 1).getValue())));
+                    groupedTokens.add(List.of(new Token(TokenType.TOKEN, tokens.get(index + 1).value())));
                     // Skip past 'token' and the token value
                     index += 2; // Move index ahead by 2 (one for 'token', one for the associated STRING value)
                 } else {
@@ -70,7 +71,7 @@ public class TokenGrouper {
                 }
             }
             // Handle 'log' declaration
-            else if (currentToken.getType() == TokenType.LOG) {
+            else if (currentToken.type() == TokenType.LOG) {
                 List<Object> logGroup = groupLog(index);
                 if (logGroup!= null) {
                     groupedTokens.add(logGroup);
@@ -81,10 +82,10 @@ public class TokenGrouper {
                 }
             }
             // Handle 'commandPrefix' declaration
-            else if (currentToken.getType() == TokenType.SET_COMMAND_PREFIX){
-                if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.STRING) {
+            else if (currentToken.type() == TokenType.SET_COMMAND_PREFIX){
+                if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.STRING) {
                     // Add the 'token' declaration and its associated value
-                    groupedTokens.add(List.of(new Token(TokenType.SET_COMMAND_PREFIX, tokens.get(index + 1).getValue())));
+                    groupedTokens.add(List.of(new Token(TokenType.SET_COMMAND_PREFIX, tokens.get(index + 1).value())));
                     // Skip past 'token' and the token value
                     index += 2; // Move index ahead by 2 (one for 'token', one for the associated STRING value)
                 } else {
@@ -92,15 +93,37 @@ public class TokenGrouper {
                     ErrorHandler.handleError("Invalid token declaration. Expected a STRING value after 'token' keyword.");
                 }
             }
+
+            // Handle 'reply' declaration
+            else if (currentToken.type() == TokenType.REPLY){
+                if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.STRING) {
+                    // Add the 'command' declaration and its associated value
+                    groupedTokens.add(List.of(new Token(TokenType.REPLY, tokens.get(index + 1).value())));
+                    // Skip past 'command' and the token value
+                    index += 2; // Move index ahead by 2 (one for 'command', one for the associated STRING value)
+                }
+            }
+
+            //Handle 'variable' declaration
+            else if (currentToken.type() == TokenType.VAR){
+                if (index + 2 < tokens.size() && tokens.get(index + 2).type() == TokenType.EQUALS){
+                    groupedTokens.add(List.of(new Token(TokenType.VAR, tokens.get(index + 1).value() + "=" + tokens.get(index + 3).value())));
+
+                    index += 4; // Move index ahead by 4 (one for 'var', one for the associated STRING value, one for '=', and one for the associated STRING value)
+                }
+            }
             // Handle unexpected tokens
             else {
-                if (currentToken.getType() == TokenType.BRACE){
-                    if (tokens.getLast() == currentToken){
-                        index += 1;
+                if (currentToken.type() == TokenType.BRACE){
+                    if (tokens.get(tokens.size() - 2) == currentToken){
+                        groupedTokens.add(List.of(currentToken));
                         break;
                     }
                 }
-                ErrorHandler.handleError("Unexpected token: " + currentToken.getValue() + " Index: "+index);
+                if (currentToken.type() == TokenType.EOF) {
+                    break;
+                }
+                ErrorHandler.handleError("Unexpected token: " + currentToken + " Index: "+index);
                 break;
             }
         }
@@ -113,9 +136,8 @@ public class TokenGrouper {
         List<Object> botGroup = new ArrayList<>();
 
         // Check if the next token is a string (i.e., the bot name)
-        if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.STRING) {
-            botGroup.add(new Token(TokenType.BOT, tokens.get(index + 1).getValue()));
-            index += 2; // Skip past 'bot' and the bot name (assuming bot declaration is like 'bot "MyBot"')
+        if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.STRING) {
+            botGroup.add(new Token(TokenType.BOT, tokens.get(index + 1).value()));
         } else {
             // Error handling if bot name is not found after 'bot'
             ErrorHandler.handleError("Invalid bot declaration. Expected a BotName after 'bot' keyword.");
@@ -124,59 +146,19 @@ public class TokenGrouper {
         return botGroup;
     }
 
-    // Grouping logic for 'command' declarations
     private GroupingResult groupCommand(int index) {
-        List<Object> commandGroup = new ArrayList<>();
-
-        if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.STRING) {
-            commandGroup.add(new Token(TokenType.COMMAND, tokens.get(index + 1).getValue()));
-            index += 2; // Skip over the command name
-
-            // Now look for 'reply' tokens
-            if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.REPLY) {
-                List<Object> replyGroup = groupReply(index);
-                commandGroup.add(replyGroup);
-                index += replyGroup.size();
-            } else {
-                ErrorHandler.handleError("Command missing 'reply' declaration.");
-                return null;
-            }
-        } else {
-            ErrorHandler.handleError("Invalid command declaration. Expected a command name after 'command' keyword.");
-            return null;
-        }
-
-        return new GroupingResult(commandGroup, index);
-    }
-
-    // Grouping logic for 'reply' declarations
-    private List<Object> groupReply(int index) {
-        List<Object> replyGroup = new ArrayList<>();
-
-        if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.STRING) {
-            replyGroup.add(new Token(TokenType.REPLY, tokens.get(index + 1).getValue()));
-            index++; // Skip past the 'reply' value
-        } else {
-            ErrorHandler.handleError("Expected a string value after 'reply' in command.");
-            return null;
-        }
-
-        return replyGroup;
-    }
-
-    // Grouping logic for 'on_ready' declarations
-    private GroupingResult groupOnReady(int index) {
         List<Object> onReadyGroup = new ArrayList<>();
 
-        // Expect '{' after 'on_ready'
-        if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.BRACE) {
-            onReadyGroup.add(new Token(TokenType.ON_READY, tokens.get(index + 1).getValue()));
-            index++; // Move past the opening brace
+        // Expect '{' after 'command'
+        if (index + 2 < tokens.size() && tokens.get(index + 2).type() == TokenType.BRACE) {
+            onReadyGroup.add(new Token(TokenType.COMMAND, tokens.get(index + 1).value()));
+            onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index + 2).value()));
+            index+=2; // Move past the opening brace
 
             // Create a new TokenGrouper for the content inside the braces
             List<Token> onReadyTokens = new ArrayList<>();
             index++; // Skip the opening brace
-            while (index < tokens.size() && tokens.get(index).getType() != TokenType.BRACE) {
+            while (index < tokens.size() && tokens.get(index).type() != TokenType.BRACE) {
                 onReadyTokens.add(tokens.get(index));
                 index++;
             }
@@ -187,8 +169,47 @@ public class TokenGrouper {
             onReadyGroup.addAll(groupedOnReadyContent);
 
             // Check for closing brace '}'
-            if (index < tokens.size() && tokens.get(index).getType() == TokenType.BRACE) {
-                onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index).getValue()));
+            if (index < tokens.size() && tokens.get(index).type() == TokenType.BRACE) {
+                onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index).value()));
+                index++; // Move past the closing brace
+            } else {
+                ErrorHandler.handleError("Expected closing brace '}' in command block.");
+                return null;
+            }
+        } else {
+            ErrorHandler.handleError("Expected opening brace '{' in command block.");
+            return null;
+        }
+
+        return new GroupingResult(onReadyGroup, index);
+    }
+
+    // Grouping logic for 'on_ready' declarations
+    private GroupingResult groupOnReady(int index) {
+        List<Object> onReadyGroup = new ArrayList<>();
+
+        // Expect '{' after 'on_ready'
+        if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.BRACE) {
+            onReadyGroup.add(new Token(TokenType.ON_READY, "on_ready"));
+            onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index + 1).value()));
+            index++; // Move past the opening brace
+
+            // Create a new TokenGrouper for the content inside the braces
+            List<Token> onReadyTokens = new ArrayList<>();
+            index++; // Skip the opening brace
+            while (index < tokens.size() && tokens.get(index).type() != TokenType.BRACE) {
+                onReadyTokens.add(tokens.get(index));
+                index++;
+            }
+
+            // Now, group the tokens inside the on_ready block
+            TokenGrouper innerGrouper = new TokenGrouper(onReadyTokens);
+            List<List<Object>> groupedOnReadyContent = innerGrouper.group(); // Group the content inside 'on_ready'
+            onReadyGroup.addAll(groupedOnReadyContent);
+
+            // Check for closing brace '}'
+            if (index < tokens.size() && tokens.get(index).type() == TokenType.BRACE) {
+                onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index).value()));
                 index++; // Move past the closing brace
             } else {
                 ErrorHandler.handleError("Expected closing brace '}' in on_ready block.");
@@ -198,7 +219,6 @@ public class TokenGrouper {
             ErrorHandler.handleError("Expected opening brace '{' in on_ready block.");
             return null;
         }
-
         return new GroupingResult(onReadyGroup, index);
     }
 
@@ -206,9 +226,8 @@ public class TokenGrouper {
     private List<Object> groupLog(int index) {
         List<Object> logGroup = new ArrayList<>();
 
-        if (index + 1 < tokens.size() && tokens.get(index + 1).getType() == TokenType.STRING) {
-            logGroup.add(new Token(TokenType.LOG, tokens.get(index + 1).getValue()));
-            index++; // Skip past the 'log' value
+        if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.STRING) {
+            logGroup.add(new Token(TokenType.LOG, tokens.get(index + 1).value()));
         } else {
             ErrorHandler.handleError("Expected a string value after 'log'");
             return null;

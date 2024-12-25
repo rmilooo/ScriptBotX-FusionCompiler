@@ -13,6 +13,9 @@ public class Compiler {
                 token "YOUR_BOT_TOKEN_HERE"
                 commandPrefix "!"
                 log "Bot is online and ready!"
+                command "joke" {
+                    reply "Why did the chicken join Discord? To cross the chat!"
+                }
                 on_ready {
                     log "Bot is online and ready!"
                     log "Bot is online and ready!"
@@ -22,6 +25,7 @@ public class Compiler {
                     log "Bot is online and ready!"
                     log "Bot is online and ready!"
                     log "Bot is online and ready!"
+                    var x = 2
                 }
             }
         """;
@@ -50,16 +54,17 @@ public class Compiler {
             if (group instanceof List<?>) {
                 // If the group is a nested list, recurse and print its contents
                 printGroupedTokens((List<List<Object>>) group, indentLevel + 1);
-            } else if (group instanceof Token) {
+            } else if (group instanceof Token token) {
                 // If it's a Token, print its details
-                Token token = (Token) group;
-                System.out.println(indent + "Type: " + token.getType() + ", Value: " + token.getValue());
+                System.out.println(indent + "Type: " + token.type() + ", Value: " + token.value());
             }
         }
     }
     public static void print(List<Token> tokens){
+        int index = 0;
         for (Token token : tokens){
-            System.out.println(token);
+            System.out.println(index+": "+token);
+            index++;
         }
     }
 }

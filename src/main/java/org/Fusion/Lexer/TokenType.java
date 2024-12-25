@@ -11,5 +11,8 @@ public enum TokenType {
     LOG,
     EOF,
     SET_COMMAND_PREFIX,
-    WHITESPACE, BRACE, UNKNOWN
+    WHITESPACE,
+    BRACE,
+    VAR,
+    INT, EQUALS, UNKNOWN
 }
