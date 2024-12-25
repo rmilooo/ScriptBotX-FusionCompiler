@@ -1,8 +1,7 @@
 package org.Fusion.Test;
 
 import org.Fusion.Lexer.Token;
-import org.Fusion.Lexer.TokenRule;
-import org.Fusion.Lexer.TokenType;
+import org.Fusion.Lexer.TokenGrouper;
 import org.Fusion.Lexer.Tokenizer;
 
 import java.util.List;
@@ -12,17 +11,17 @@ public class Compiler {
         String botScript = """
             bot "MyFirstBot" {
                 token "YOUR_BOT_TOKEN_HERE"
-                
+                commandPrefix "!"
+                log "Bot is online and ready!"
                 on_ready {
                     log "Bot is online and ready!"
-                }
-                
-                command "!ping" {
-                    reply "Pong!"
-                }
-                
-                command "!hello" {
-                    reply "Hello, {user}!"
+                    log "Bot is online and ready!"
+                    log "Bot is online and ready!"
+                    log "Bot is online and ready!"
+                    log "Bot is online and ready!"
+                    log "Bot is online and ready!"
+                    log "Bot is online and ready!"
+                    log "Bot is online and ready!"
                 }
             }
         """;
@@ -30,14 +29,36 @@ public class Compiler {
         // Create a new tokenizer
         Tokenizer tokenizer = new Tokenizer();
 
-        // Optionally, add a new token rule at runtime (for example, a new "variable" token)
-        tokenizer.addTokenRule(new TokenRule("variable\\s+\"([^\"]+)\"", matcher -> new Token(TokenType.UNKNOWN, matcher.group(1))));
-
         // Tokenize the script
-        List<Token> tokens = tokenizer.tokenize(botScript);
+        TokenGrouper grouper = new TokenGrouper(tokenizer.tokenize(botScript));
 
-        // Print the tokens
-        for (Token token : tokens) {
+        // Group the tokens
+        List<List<Object>> groupedTokens = grouper.group();
+
+        // Print the grouped tokens (handling nested groups)
+        printGroupedTokens(groupedTokens, 0);
+
+        //print(tokenizer.tokenize(botScript));
+
+    }
+
+    // Recursive method to print the grouped tokens, handling nested groups
+    private static void printGroupedTokens(List<List<Object>> groupedTokens, int indentLevel) {
+        String indent = "  ".repeat(indentLevel);
+
+        for (Object group : groupedTokens) {
+            if (group instanceof List<?>) {
+                // If the group is a nested list, recurse and print its contents
+                printGroupedTokens((List<List<Object>>) group, indentLevel + 1);
+            } else if (group instanceof Token) {
+                // If it's a Token, print its details
+                Token token = (Token) group;
+                System.out.println(indent + "Type: " + token.getType() + ", Value: " + token.getValue());
+            }
+        }
+    }
+    public static void print(List<Token> tokens){
+        for (Token token : tokens){
             System.out.println(token);
         }
     }

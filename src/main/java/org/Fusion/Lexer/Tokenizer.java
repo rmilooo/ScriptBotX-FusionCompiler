@@ -2,56 +2,64 @@ package org.Fusion.Lexer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.HashMap;
 
 public class Tokenizer {
 
-    private final List<TokenRule> tokenRules;
+    // Map to store TokenType and its corresponding regex pattern
+    private static final Map<TokenType, String> TOKEN_PATTERNS = new HashMap<>();
 
-    public Tokenizer() {
-        // Initialize the list of token rules
-        tokenRules = new ArrayList<>();
-
-        // Add rules for each token type
-        tokenRules.add(new TokenRule("bot\\s+\"([^\"]+)\"", matcher -> new Token(TokenType.BOT, matcher.group(1))));
-        tokenRules.add(new TokenRule("token\\s+\"([^\"]+)\"", matcher -> new Token(TokenType.TOKEN, matcher.group(1))));
-        tokenRules.add(new TokenRule("on_ready\\s+\\{", matcher -> new Token(TokenType.ON_READY, "on_ready")));
-        tokenRules.add(new TokenRule("command\\s+\"([^\"]+)\"\\s+\\{", matcher -> new Token(TokenType.COMMAND, matcher.group(1))));
-        tokenRules.add(new TokenRule("reply\\s+\"([^\"]+)\"", matcher -> new Token(TokenType.REPLY, matcher.group(1))));
-        tokenRules.add(new TokenRule("log\\s+\"([^\"]+)\"", matcher -> new Token(TokenType.LOG, matcher.group(1))));
+    static {
+        // Add regex patterns for each TokenType
+        TOKEN_PATTERNS.put(TokenType.BOT, "bot");
+        TOKEN_PATTERNS.put(TokenType.TOKEN, "token");
+        TOKEN_PATTERNS.put(TokenType.ON_READY, "on_ready");
+        TOKEN_PATTERNS.put(TokenType.COMMAND, "command");
+        TOKEN_PATTERNS.put(TokenType.REPLY, "reply");
+        TOKEN_PATTERNS.put(TokenType.USER, "\\{user\\}");
+        TOKEN_PATTERNS.put(TokenType.STRING, "\"[^\"]*\"");
+        TOKEN_PATTERNS.put(TokenType.LOG, "log");
+        TOKEN_PATTERNS.put(TokenType.SET_COMMAND_PREFIX, "commandPrefix");
+        TOKEN_PATTERNS.put(TokenType.WHITESPACE, "\\s+");
+        TOKEN_PATTERNS.put(TokenType.BRACE, "[\\{\\}]");
+        TOKEN_PATTERNS.put(TokenType.UNKNOWN, ".");
+        TOKEN_PATTERNS.put(TokenType.EOF, "$");
     }
 
     public List<Token> tokenize(String input) {
         List<Token> tokens = new ArrayList<>();
-        String remainingInput = input;
+        StringBuilder combinedPattern = new StringBuilder();
 
-        while (!remainingInput.isEmpty()) {
-            boolean matched = false;
+        // Build combined regex pattern by concatenating all individual patterns
+        for (Map.Entry<TokenType, String> entry : TOKEN_PATTERNS.entrySet()) {
+            combinedPattern.append("(").append(entry.getValue()).append(")|");
+        }
 
-            for (TokenRule rule : tokenRules) {
-                Matcher matcher = rule.getPattern().matcher(remainingInput);
-                if (matcher.find()) {
-                    tokens.add(rule.createToken(matcher));
-                    remainingInput = remainingInput.substring(matcher.end());
-                    matched = true;
+        // Remove the last "|" to form a valid regex
+        combinedPattern.deleteCharAt(combinedPattern.length() - 1);
+
+        // Create a Pattern object
+        Pattern pattern = Pattern.compile(combinedPattern.toString());
+        Matcher matcher = pattern.matcher(input);
+
+        while (matcher.find()) {
+            // Match the group that was found
+            for (Map.Entry<TokenType, String> entry : TOKEN_PATTERNS.entrySet()) {
+                String pattern2 = entry.getValue();
+                String matched = matcher.group();
+                if (matched != null && matched.matches(pattern2)) {
+                    if (matched.trim().isEmpty()) continue;  // Skip empty strings (whitespace)
+
+                    Token token = new Token(entry.getKey(), matched);
+                    tokens.add(token);
                     break;
                 }
             }
-
-            if (!matched) {
-                // If no pattern matched, create an unknown token for the remaining input
-                tokens.add(new Token(TokenType.UNKNOWN, remainingInput));
-                break;
-            }
         }
 
-        tokens.add(new Token(TokenType.EOF, ""));
         return tokens;
-    }
-
-    // Method to add new token rules dynamically (optional)
-    public void addTokenRule(TokenRule rule) {
-        tokenRules.add(rule);
     }
 }
