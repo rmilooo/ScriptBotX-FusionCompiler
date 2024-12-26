@@ -121,6 +121,7 @@ public class TokenGrouper {
                     }
                 }
                 if (currentToken.type() == TokenType.EOF) {
+                    groupedTokens.add(List.of(currentToken));
                     break;
                 }
                 ErrorHandler.handleError("Unexpected token: " + currentToken + " Index: "+index);
