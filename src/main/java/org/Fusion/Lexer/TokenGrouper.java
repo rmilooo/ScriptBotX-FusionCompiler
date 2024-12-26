@@ -7,6 +7,7 @@ import java.util.List;
 
 public class TokenGrouper {
     private final List<Token> tokens;
+    public ErrorHandler handler = new ErrorHandler();
 
     public TokenGrouper(List<Token> tokens) {
         this.tokens = tokens;
@@ -27,7 +28,7 @@ public class TokenGrouper {
                     groupedTokens.add(botGroup);
                     index += 3;
                 } else {
-                    ErrorHandler.handleError("Invalid bot declaration.");
+                    handler.handleError("Invalid bot declaration.");
                     break;
                 }
             }
@@ -40,7 +41,7 @@ public class TokenGrouper {
                     groupedTokens.add(commandGroup);
                     index = result.newIndex();
                 } else {
-                    ErrorHandler.handleError("Invalid command declaration.");
+                    handler.handleError("Invalid command declaration.");
                     break;
                 }
             }
@@ -53,7 +54,7 @@ public class TokenGrouper {
                     groupedTokens.add(onReadyGroup);
                     index = result.newIndex();
                 } else {
-                    ErrorHandler.handleError("Invalid 'on_ready' declaration.");
+                    handler.handleError("Invalid 'on_ready' declaration.");
                     break;
                 }
             }
@@ -67,7 +68,7 @@ public class TokenGrouper {
                     index += 2; // Move index ahead by 2 (one for 'token', one for the associated STRING value)
                 } else {
                     // Handle error or invalid syntax if next token isn't a STRING
-                    ErrorHandler.handleError("Invalid token declaration. Expected a STRING value after 'token' keyword.");
+                    handler.handleError("Invalid token declaration. Expected a STRING value after 'token' keyword.");
                 }
             }
             // Handle 'log' declaration
@@ -77,7 +78,7 @@ public class TokenGrouper {
                     groupedTokens.add(logGroup);
                     index += logGroup.size() + 1;
                 } else {
-                    ErrorHandler.handleError("Invalid 'log' declaration.");
+                    handler.handleError("Invalid 'log' declaration.");
                     break;
                 }
             }
@@ -90,7 +91,7 @@ public class TokenGrouper {
                     index += 2; // Move index ahead by 2 (one for 'token', one for the associated STRING value)
                 } else {
                     // Handle error or invalid syntax if next token isn't a STRING
-                    ErrorHandler.handleError("Invalid token declaration. Expected a STRING value after 'token' keyword.");
+                    handler.handleError("Invalid token declaration. Expected a STRING value after 'token' keyword.");
                 }
             }
 
@@ -124,7 +125,7 @@ public class TokenGrouper {
                     groupedTokens.add(List.of(currentToken));
                     break;
                 }
-                ErrorHandler.handleError("Unexpected token: " + currentToken + " Index: "+index);
+                handler.handleError("Unexpected token: " + currentToken + " Index: "+index);
                 break;
             }
         }
@@ -141,7 +142,7 @@ public class TokenGrouper {
             botGroup.add(new Token(TokenType.BOT, tokens.get(index + 1).value()));
         } else {
             // Error handling if bot name is not found after 'bot'
-            ErrorHandler.handleError("Invalid bot declaration. Expected a BotName after 'bot' keyword.");
+            handler.handleError("Invalid bot declaration. Expected a BotName after 'bot' keyword.");
             return null;
         }
         return botGroup;
@@ -174,11 +175,11 @@ public class TokenGrouper {
                 onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index).value()));
                 index++; // Move past the closing brace
             } else {
-                ErrorHandler.handleError("Expected closing brace '}' in command block.");
+                handler.handleError("Expected closing brace '}' in command block. but found " + tokens.get(index));
                 return null;
             }
         } else {
-            ErrorHandler.handleError("Expected opening brace '{' in command block.");
+            handler.handleError("Expected opening brace '{' in command block. but found" + tokens.get(index + 2));
             return null;
         }
 
@@ -213,11 +214,11 @@ public class TokenGrouper {
                 onReadyGroup.add(new Token(TokenType.BRACE, tokens.get(index).value()));
                 index++; // Move past the closing brace
             } else {
-                ErrorHandler.handleError("Expected closing brace '}' in on_ready block.");
+                handler.handleError("Expected closing brace '}' in on_ready block.");
                 return null;
             }
         } else {
-            ErrorHandler.handleError("Expected opening brace '{' in on_ready block.");
+            handler.handleError("Expected opening brace '{' in on_ready block.");
             return null;
         }
         return new GroupingResult(onReadyGroup, index);
@@ -230,10 +231,18 @@ public class TokenGrouper {
         if (index + 1 < tokens.size() && tokens.get(index + 1).type() == TokenType.STRING) {
             logGroup.add(new Token(TokenType.LOG, tokens.get(index + 1).value()));
         } else {
-            ErrorHandler.handleError("Expected a string value after 'log'");
+            handler.handleError("Expected a string value after 'log'");
             return null;
         }
 
         return logGroup;
     }
+
+    public ErrorHandler getHandler() {
+        return handler;
+    }
+    public boolean isSuccess() {
+        return handler.getAllErrors().isEmpty();
+    }
+
 }
