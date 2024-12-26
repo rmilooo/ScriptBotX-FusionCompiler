@@ -33,6 +33,8 @@ public class Compiler {
         // Create a new tokenizer
         Tokenizer tokenizer = new Tokenizer();
 
+        print(tokenizer.tokenize(botScript));
+
         // Tokenize the script
         TokenGrouper grouper = new TokenGrouper(tokenizer.tokenize(botScript));
 
@@ -46,7 +48,6 @@ public class Compiler {
 
         System.out.println(compiler.compileToPython());
 
-        //print(tokenizer.tokenize(botScript));
 
     }
 

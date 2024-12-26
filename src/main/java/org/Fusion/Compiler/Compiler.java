@@ -8,7 +8,7 @@ import java.util.List;
 
 public class Compiler {
     private final List<List<Object>> tokens;
-
+    private String botToken = null;
     public Compiler(List<List<Object>> tokens) {
         this.tokens = tokens;
     }
@@ -32,6 +32,7 @@ public class Compiler {
     public String compileToPython() {
         StringBuilder pythonCode = new StringBuilder();
         pythonCode.append("import discord\n");
+        pythonCode.append("import tasks\n");
         pythonCode.append("from discord.ext import commands\n\n");
 
         pythonCode.append("intents = discord.Intents.default()\n" +
@@ -73,6 +74,7 @@ public class Compiler {
                 return "botname = " + token.value();
             }
             case TOKEN -> {
+                setBotToken(token.value());
                 return "TOKEN = " + token.value();
             }
             case SET_COMMAND_PREFIX -> {
@@ -98,5 +100,11 @@ public class Compiler {
                 return "# Unhandled token type: " + token.type();
             }
         }
+    }
+    public void setBotToken(String token) {
+        this.botToken = token;
+    }
+    public String getBotToken() {
+        return botToken;
     }
 }
