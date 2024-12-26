@@ -42,6 +42,10 @@ public class Compiler {
         // Print the grouped tokens (handling nested groups)
         printGroupedTokens(groupedTokens, 0);
 
+        org.Fusion.Compiler.Compiler compiler = new org.Fusion.Compiler.Compiler(groupedTokens);
+
+        System.out.println(compiler.compileToPython());
+
         //print(tokenizer.tokenize(botScript));
 
     }
